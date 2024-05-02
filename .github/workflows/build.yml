@@ -1,0 +1,75 @@
+name: Scrape Releases
+
+env:
+  URLS: ${{ secrets.URLS }}
+  PRODUCT_LINK_CSS_SELECTOR: ${{ secrets.PRODUCT_LINK_CSS_SELECTOR }}
+  SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR: ${{ secrets.SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR }}
+  SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME: ${{ secrets.SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME }}
+  INPUT_PURCHASE_AMOUNT_CSS_SELECTOR: ${{ secrets.INPUT_PURCHASE_AMOUNT_CSS_SELECTOR }}
+  PURCHASE_SUBMIT_CSS_SELECTOR: ${{ secrets.PURCHASE_SUBMIT_CSS_SELECTOR }}
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛒 Checkout the repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: 🕸️ Run crawler
+        run: |
+            python crawler.py
+        shell: bash
+
+      - name: 🗒️ Upload result
+        uses: actions/upload-artifact@v3
+        with:
+          name: stocks.json
+          path: ${{ github.workspace }}/releases.json
+
+      - name: ✅ Validate stuff
+        run: |
+            [ -s "${{ github.workspace }}/releases.json" ] && echo "🎉 Releases JSON generated successfully!" || exit 1
+        shell: bash
+
+      - name: 🚮 Delete older releases
+        uses: dev-drprasad/delete-older-releases@v0.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          keep_latest: 3
+          delete_tags: true
+
+      - name: 🛠️ Generate stats
+        id: utils
+        run: |
+          # Date
+          echo "::set-output name=date::$(date -u "+%Y%m%d%H%M%S")"
+          # Number of releases
+          echo "::set-output name=releases::$(jq length "${{ github.workspace }}/releases.json")"
+        shell: bash
+
+      - name: 🚀 Upload new release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: feeds
+          name: ${{ steps.utils.outputs.date }}
+          body: Number of releases - ${{ steps.utils.outputs.releases }}
+          files: |
+            ${{ github.workspace }}/releases.json
+          draft: false
+          prerelease: false
