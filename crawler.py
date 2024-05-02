@@ -90,7 +90,6 @@ def process_product_pages(url, driver: webdriver.Chrome, entries: list = []) -> 
                 "msg": msg
             }
             entries.append(entry)
-        break
 
     return entries
 

@@ -66,7 +66,7 @@ jobs:
         with:
           tag_name: feeds
           name: ${{ steps.utils.outputs.date }}
-          body: Number of releases - ${{ steps.utils.outputs.releases }}
+          body: "Number of releases: ${{ steps.utils.outputs.releases }}"
           files: |
             ${{ github.workspace }}/releases.json
             ${{ github.workspace }}/stocks.json
