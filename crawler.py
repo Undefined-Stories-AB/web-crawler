@@ -22,7 +22,7 @@ INPUT_PURCHASE_AMOUNT_CSS_SELECTOR = os.getenv(
 PURCHASE_SUBMIT_CSS_SELECTOR = os.getenv("PURCHASE_SUBMIT_CSS_SELECTOR")
 
 
-def process_product_pages(url, driver: webdriver.Chrome, entries: list = []) -> list:
+def process_product_pages(url: str, driver: webdriver.Chrome, entries: list = []) -> list:
     # Navigate to the product page
     driver.get(url)
 
@@ -61,9 +61,9 @@ def process_product_pages(url, driver: webdriver.Chrome, entries: list = []) -> 
                     "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", antal_input)
 
                 # Click on buy button
-                submit_button = driver.find_element(
-                    By.CSS_SELECTOR,
-                    PURCHASE_SUBMIT_CSS_SELECTOR
+                submit_button = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, PURCHASE_SUBMIT_CSS_SELECTOR))
                 )
 
                 # This will redirect us to a simple Error page
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     try:
         with open("stocks.json", "a", encoding="utf-8") as fp:
             entries = []
-            for url in URLS:
-                entries.append(process_product_pages(url, chrome_driver))
+            for product_page_url in URLS:
+                entries.append(process_product_pages(product_page_url, chrome_driver))
             fp.write(json.dumps(entries))
     except:
         raise Exception("Failed to process product pages")
