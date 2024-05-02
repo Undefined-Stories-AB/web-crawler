@@ -105,7 +105,7 @@ if __name__ == "__main__":
     chrome_driver = webdriver.Chrome(options=chrome_options)
 
     try:
-        with open("releases.json", "a", encoding="utf-8") as fp:
+        with open("stocks.json", "a", encoding="utf-8") as fp:
             entries = []
             for url in URLS:
                 process_product_pages(url, chrome_driver, entries)

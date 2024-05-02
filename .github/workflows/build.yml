@@ -33,16 +33,12 @@ jobs:
       - name: 🕸️ Run crawler
         run: |
             python crawler.py
+            cp stocks.json releases.json
         shell: bash
-
-      - name: 🗒️ Upload result
-        uses: actions/upload-artifact@v3
-        with:
-          name: releases.json
-          path: ${{ github.workspace }}/releases.json
 
       - name: ✅ Validate stuff
         run: |
+            [ -s "${{ github.workspace }}/stocks.json" ] && echo "🎉 Stocks JSON generated successfully!" || exit 1
             [ -s "${{ github.workspace }}/releases.json" ] && echo "🎉 Releases JSON generated successfully!" || exit 1
         shell: bash
 
@@ -71,5 +67,6 @@ jobs:
           body: Number of releases - ${{ steps.utils.outputs.releases }}
           files: |
             ${{ github.workspace }}/releases.json
+            ${{ github.workspace }}/stocks.json
           draft: false
           prerelease: false
