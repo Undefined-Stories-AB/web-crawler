@@ -74,8 +74,11 @@ def process_product_pages(url, driver: webdriver.Chrome, entries: list = []) -> 
                     EC.presence_of_element_located((By.CLASS_NAME, "Error"))
                 )
                 # msg = div_element.text
-                stock_amount = re.search(r"(\d+)", msg).group(0)
-                msg = "Confirmed"
+                try:
+                    stock_amount = re.search(r"(\d+)", msg).group(0)
+                    msg = "Confirmed"
+                except:
+                    pass
             except TimeoutException:
                 msg = f"Unconfirmed. Assumed stock amount is: {suggested_stock_amount}"
 
