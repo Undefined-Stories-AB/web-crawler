@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from feedgen.feed import FeedGenerator
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -76,9 +77,9 @@ def process_product_pages(url: str, driver: webdriver.Chrome, entries: list = []
                 ).text
 
                 matched_stock_amount = re.search(
-                    r".*([-+]?\d+).*", error_message)
+                    r".*(\d+).*", error_message)
                 if matched_stock_amount:
-                    stock_amount = matched_stock_amount.group(0)
+                    stock_amount = str(int(matched_stock_amount.group(1)))
                     msg = "Confirmed"
             except TimeoutException:
                 msg = f"Unconfirmed. Assumed stock amount is: {suggested_stock_amount}"
@@ -114,8 +115,32 @@ if __name__ == "__main__":
         with open("stocks.json", "a", encoding="utf-8") as fp:
             entries = []
             for product_page_url in URLS:
-                entries.append(process_product_pages(product_page_url, chrome_driver))
-            fp.write(json.dumps(entries))
+                entries.append(process_product_pages(
+                    product_page_url, chrome_driver))
+
+            # Flatten the list of lists into a single list of dicts
+            data = [item for sublist in entries for item in sublist]
+
+            fp.write(json.dumps(data))
+
+            # RSS feed configuration
+            feed = FeedGenerator()
+            feed.title("Stocks RSS Feed")
+            feed.id(
+                "https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks.rss")
+            feed.link(
+                href="https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks.rss")
+            feed.subtitle("Simple RSS feed")
+            # Adding entries from data
+            for entry in data:
+                item = feed.add_entry()
+                item.title(entry["product"])
+                item.link(href=entry["product"])
+                item.description(entry["stock_amount"])
+
+            # Save the RSS feed to a file
+            feed.rss_file("stocks.rss")
+
     except:
         raise Exception("Failed to process product pages")
     finally:
