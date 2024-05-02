@@ -1,4 +1,6 @@
 name: Scrape Releases
+permissions:
+  contents: write
 
 env:
   URLS: ${{ secrets.URLS }}
