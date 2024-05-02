@@ -73,14 +73,14 @@ def process_product_pages(url, driver: webdriver.Chrome, entries: list = []) -> 
                 div_element = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CLASS_NAME, "Error"))
                 )
-                msg = div_element.text
+                # msg = div_element.text
                 stock_amount = re.search(r"(\d+)", msg).group(0)
-
+                msg = "Confirmed"
             except TimeoutException:
-                print(f"No error message found for {product_url}")
+                msg = f"Unconfirmed. Assumed stock amount is: {suggested_stock_amount}"
 
             entry = {
-                "url": str(product_url),
+                # "url": str(product_url),
                 "product": str(product_url.split('/')[-1]),
                 "stock_amount": stock_amount,
                 "suggested_stock_amount": suggested_stock_amount,
