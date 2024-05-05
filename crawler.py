@@ -13,16 +13,26 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
 load_dotenv()
 
-URLS = os.getenv("URLS").split(",")
-PRODUCT_LINK_CSS_SELECTOR = os.getenv("PRODUCT_LINK_CSS_SELECTOR")
-SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR = os.getenv("SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR")
-SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME = os.getenv(
-    "SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME"
-)
-INPUT_PURCHASE_AMOUNT_CSS_SELECTOR = os.getenv("INPUT_PURCHASE_AMOUNT_CSS_SELECTOR")
-PURCHASE_SUBMIT_CSS_SELECTOR = os.getenv("PURCHASE_SUBMIT_CSS_SELECTOR")
+# Define a mapping of local variable names to corresponding ENV variable names
+# This will also work as a dictionary to store configuration values
+cfg = {
+    'urls': "URLS",
+    'product_link_selector': "PRODUCT_LINK_CSS_SELECTOR",
+    'stock_amount_selector': "SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR",
+    'stock_amount_attribute': "SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME",
+    'purchase_amount_selector': "INPUT_PURCHASE_AMOUNT_CSS_SELECTOR",
+    'purchase_submit_selector': "PURCHASE_SUBMIT_CSS_SELECTOR"
+}
+
+# Retrieve and assign values from ENV variables to the configuration dictionary
+for key, env_name in cfg.items():
+    value = os.getenv(env_name)
+    if value is None:
+        raise ValueError(f"Missing environment variable: {env_name}")
+    cfg[key] = value
 
 
 def process_product_pages(
@@ -32,12 +42,15 @@ def process_product_pages(
     driver.get(url)
 
     # Find all product links on the page
-    product_links = driver.find_elements(By.CSS_SELECTOR, PRODUCT_LINK_CSS_SELECTOR)
+    product_links = driver.find_elements(
+        By.CSS_SELECTOR, 
+        cfg.product_link_selector
+    )
 
     product_links_count = len(product_links)
 
     # Iterate through each product link
-    for link in product_links[len(entries) :]:
+    for link in product_links[len(entries):]:
         product_url = link.get_attribute("href")
 
         if product_url:
@@ -46,14 +59,15 @@ def process_product_pages(
 
             # Get the suggested current stock amount
             suggested_stock_amount = driver.find_element(
-                By.CSS_SELECTOR, SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR
-            ).get_attribute(SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME)
+                By.CSS_SELECTOR, cfg.stock_amount_css_selector
+            ).get_attribute(cfg.stock_amount_attribute)
 
             stock_amount = suggested_stock_amount
             msg = ""
             try:
                 antal_input = driver.find_element(
-                    By.CSS_SELECTOR, INPUT_PURCHASE_AMOUNT_CSS_SELECTOR
+                    By.CSS_SELECTOR,
+                    cfg.purchase_amount_selector
                 )
 
                 # Set value of order amount to 999
@@ -69,7 +83,10 @@ def process_product_pages(
                 # Click on buy button
                 submit_button = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, PURCHASE_SUBMIT_CSS_SELECTOR)
+                        (
+                            By.CSS_SELECTOR, 
+                            cfg.purchase_submit_selector
+                        )
                     )
                 )
 
@@ -79,7 +96,13 @@ def process_product_pages(
                 # Get the text content of the Error div
                 error_message = (
                     WebDriverWait(driver, 10)
-                    .until(EC.presence_of_element_located((By.CLASS_NAME, "Error")))
+                    .until(EC.presence_of_element_located(
+                            (
+                                By.CLASS_NAME,
+                                "Error"
+                            )
+                        )
+                    )
                     .text
                 )
 
@@ -122,7 +145,7 @@ if __name__ == "__main__":
         with requests.get(FEED_URL + ".json") as feed:
             existing_entries = feed.json()
             new_entries = []
-            for product_page_url in URLS:
+            for product_page_url in cfg.urls.split(','):
                 new_entries.append(
                     process_product_pages(
                         product_page_url,
