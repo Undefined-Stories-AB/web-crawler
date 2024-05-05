@@ -1,6 +1,9 @@
 import json
 import os
 import re
+import requests
+from datetime import datetime
+from dateutil import tz
 from feedgen.feed import FeedGenerator
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -14,28 +17,28 @@ load_dotenv()
 
 URLS = os.getenv("URLS").split(",")
 PRODUCT_LINK_CSS_SELECTOR = os.getenv("PRODUCT_LINK_CSS_SELECTOR")
-SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR = os.getenv(
-    "SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR")
+SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR = os.getenv("SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR")
 SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME = os.getenv(
-    "SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME")
-INPUT_PURCHASE_AMOUNT_CSS_SELECTOR = os.getenv(
-    "INPUT_PURCHASE_AMOUNT_CSS_SELECTOR")
+    "SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME"
+)
+INPUT_PURCHASE_AMOUNT_CSS_SELECTOR = os.getenv("INPUT_PURCHASE_AMOUNT_CSS_SELECTOR")
 PURCHASE_SUBMIT_CSS_SELECTOR = os.getenv("PURCHASE_SUBMIT_CSS_SELECTOR")
 
 
-def process_product_pages(url: str, driver: webdriver.Chrome, entries: list = []) -> list:
+def process_product_pages(
+    url: str, driver: webdriver.Chrome, entries: list = []
+) -> list:
     # Navigate to the product page
     driver.get(url)
 
     # Find all product links on the page
-    product_links = driver.find_elements(
-        By.CSS_SELECTOR, PRODUCT_LINK_CSS_SELECTOR)
+    product_links = driver.find_elements(By.CSS_SELECTOR, PRODUCT_LINK_CSS_SELECTOR)
 
     product_links_count = len(product_links)
 
     # Iterate through each product link
-    for link in product_links[len(entries):]:
-        product_url = link.get_attribute('href')
+    for link in product_links[len(entries) :]:
+        product_url = link.get_attribute("href")
 
         if product_url:
             # Visit each product page
@@ -43,55 +46,58 @@ def process_product_pages(url: str, driver: webdriver.Chrome, entries: list = []
 
             # Get the suggested current stock amount
             suggested_stock_amount = driver.find_element(
-                By.CSS_SELECTOR,
-                SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR).get_attribute(SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME)
+                By.CSS_SELECTOR, SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR
+            ).get_attribute(SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME)
 
             stock_amount = suggested_stock_amount
-            msg = ''
+            msg = ""
             try:
                 antal_input = driver.find_element(
-                    By.CSS_SELECTOR,
-                    INPUT_PURCHASE_AMOUNT_CSS_SELECTOR)
+                    By.CSS_SELECTOR, INPUT_PURCHASE_AMOUNT_CSS_SELECTOR
+                )
 
                 # Set value of order amount to 999
                 driver.execute_script(
-                    "arguments[0].value = arguments[1];", antal_input, 999)
+                    "arguments[0].value = arguments[1];", antal_input, 999
+                )
 
-                # Optionally, you can trigger a JavaScript change event to simulate user interaction
                 driver.execute_script(
-                    "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", antal_input)
+                    "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+                    antal_input,
+                )
 
                 # Click on buy button
                 submit_button = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, PURCHASE_SUBMIT_CSS_SELECTOR))
+                        (By.CSS_SELECTOR, PURCHASE_SUBMIT_CSS_SELECTOR)
+                    )
                 )
 
                 # This will redirect us to a simple Error page
                 submit_button.submit()
 
                 # Get the text content of the Error div
-                error_message = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (By.CLASS_NAME, "Error"))
-                ).text
+                error_message = (
+                    WebDriverWait(driver, 10)
+                    .until(EC.presence_of_element_located((By.CLASS_NAME, "Error")))
+                    .text
+                )
 
-                matched_stock_amount = re.search(
-                    r".*(\d+).*", error_message)
+                matched_stock_amount = re.search(r".*(\d+).*", error_message)
                 if matched_stock_amount:
                     stock_amount = str(int(matched_stock_amount.group(1)))
                     msg = "Confirmed"
             except TimeoutException:
                 msg = f"Unconfirmed. Assumed stock amount is: {suggested_stock_amount}"
 
-            product = str(product_url.split('/')[-1])
+            product = str(product_url.split("/")[-1])
 
             entry = {
                 # "url": str(product_url),
                 "product": product,
                 "stock_amount": stock_amount,
                 "suggested_stock_amount": suggested_stock_amount,
-                "msg": msg
+                "msg": msg,
             }
             entries.append(entry)
 
@@ -102,47 +108,62 @@ def process_product_pages(url: str, driver: webdriver.Chrome, entries: list = []
     return entries
 
 
-# Example usage
 if __name__ == "__main__":
     # Set Chrome options to run headlessly
     chrome_options = Options()
-    chrome_options.add_argument('--headless')  # Run in headless mode
+    chrome_options.add_argument("--headless")  # Run in headless mode
+
+    FEED_URL = "https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks"
 
     # Launch the browser
     chrome_driver = webdriver.Chrome(options=chrome_options)
 
     try:
-        with open("stocks.json", "a", encoding="utf-8") as fp:
-            entries = []
+        with requests.get(FEED_URL + ".json") as feed:
+            existing_entries = feed.json()
+            new_entries = []
             for product_page_url in URLS:
-                entries.append(process_product_pages(
-                    product_page_url, chrome_driver))
+                new_entries.append(
+                    process_product_pages(
+                        product_page_url,
+                        chrome_driver
+                    )
+                )
 
             # Flatten the list of lists into a single list of dicts
-            data = [item for sublist in entries for item in sublist]
+            new_entries = [
+                item for sublist in new_entries for item in sublist
+            ] + existing_entries
 
-            fp.write(json.dumps(data))
+            with open("stocks.json", "w", encoding="utf-8") as fp:
+                fp.write(json.dumps(existing_entries + new_entries))
 
             # RSS feed configuration
             feed = FeedGenerator()
             feed.title("Stocks RSS Feed")
-            feed.id(
-                "https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks.rss")
-            feed.link(
-                href="https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks.rss")
+            feed.link(href=(FEED_URL + ".rss"))
             feed.subtitle("Simple RSS feed")
-            # Adding entries from data
-            for entry in data:
+
+            # Adding new entries from data
+            for entry in new_entries:
                 item = feed.add_entry()
                 item.title(entry["product"])
                 item.link(href=entry["product"])
                 item.description(entry["stock_amount"])
+                item.published(datetime.now(tz.gettz('Europe/Stockholm')))
+                item.updated(datetime.now(tz.gettz('Europe/Stockholm')))
+            
+            for entry in existing_entries:
+                item = feed.add_entry()
+                item.title(entry["product"])
+                item.link(href=entry["product"])
+                item.description(entry["stock_amount"])
+                item.updated(datetime.now(tz.gettz('Europe/Stockholm')))
+                if 'published' in entry:
+                    item.published(entry['published'])
 
             # Save the RSS feed to a file
             feed.rss_file("stocks.rss")
-
-    except:
-        raise Exception("Failed to process product pages")
     finally:
         # Quit the WebDriver
         chrome_driver.quit()
