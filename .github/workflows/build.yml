@@ -35,13 +35,12 @@ jobs:
       - name: 🕸️ Run crawler
         run: |
             python crawler.py
-            cp stocks.json releases.json
         shell: bash
 
       - name: ✅ Validate stuff
         run: |
             [ -s "${{ github.workspace }}/stocks.json" ] && echo "🎉 Stocks JSON generated successfully!" || exit 1
-            [ -s "${{ github.workspace }}/releases.json" ] && echo "🎉 Releases JSON generated successfully!" || exit 1
+            [ -s "${{ github.workspace }}/stocks.rss" ]  && echo "🎉 Stocks JSON generated successfully!" || exit 1
         shell: bash
 
       - name: 🚮 Delete older releases
@@ -57,19 +56,26 @@ jobs:
         run: |
           # Date
           echo "::set-output name=date::$(date -u "+%Y%m%d%H%M%S")"
-          # Number of releases
-          echo "::set-output name=releases::$(jq length "${{ github.workspace }}/releases.json")"
+          # Number of datapoints
+          echo "::set-output name=stocks::$(jq length "${{ github.workspace }}/stocks.json")"
         shell: bash
 
-      - name: 🚀 Upload new release
+      - name: 🛠️ Generate releases.json
+        run: |
+          # Number of datapoints
+          echo "{ \"datapoints\": ${{ steps.utils.outputs.stocks }} }" > "${{ github.workspace }}/release.json" 
+        shell: bash
+
+      - name: 🚀 Upload new stocks feed
         uses: softprops/action-gh-release@v1
         with:
           tag_name: feeds
           name: ${{ steps.utils.outputs.date }}
-          body: "Number of releases: ${{ steps.utils.outputs.releases }}"
+          body: "Number of entries: ${{ steps.utils.outputs.stocks }}"
           files: |
             ${{ github.workspace }}/releases.json
             ${{ github.workspace }}/stocks.json
             ${{ github.workspace }}/stocks.rss
           draft: false
           prerelease: false
+          make_latest: true
