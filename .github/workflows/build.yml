@@ -63,7 +63,7 @@ jobs:
       - name: 🛠️ Generate releases.json
         run: |
           # Number of datapoints
-          echo "{ \"datapoints\": ${{ steps.utils.outputs.stocks }} }" > "${{ github.workspace }}/release.json" 
+          echo "{ \"datapoints\": ${{ steps.utils.outputs.stocks }} }" > "${{ github.workspace }}/releases.json" 
         shell: bash
 
       - name: 🚀 Upload new stocks feed
