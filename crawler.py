@@ -44,7 +44,7 @@ def process_product_pages(
     # Find all product links on the page
     product_links = driver.find_elements(
         By.CSS_SELECTOR, 
-        cfg.product_link_selector
+        cfg['product_link_selector']
     )
 
     product_links_count = len(product_links)
@@ -59,15 +59,15 @@ def process_product_pages(
 
             # Get the suggested current stock amount
             suggested_stock_amount = driver.find_element(
-                By.CSS_SELECTOR, cfg.stock_amount_css_selector
-            ).get_attribute(cfg.stock_amount_attribute)
+                By.CSS_SELECTOR, cfg['stock_amount_selector']
+            ).get_attribute(cfg['stock_amount_attribute'])
 
             stock_amount = suggested_stock_amount
             msg = ""
             try:
                 antal_input = driver.find_element(
                     By.CSS_SELECTOR,
-                    cfg.purchase_amount_selector
+                    cfg['purchase_amount_selector']
                 )
 
                 # Set value of order amount to 999
@@ -85,7 +85,7 @@ def process_product_pages(
                     EC.presence_of_element_located(
                         (
                             By.CSS_SELECTOR, 
-                            cfg.purchase_submit_selector
+                            cfg['purchase_submit_selector']
                         )
                     )
                 )
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         with requests.get(FEED_URL + ".json") as feed:
             existing_entries = feed.json()
             new_entries = []
-            for product_page_url in cfg.urls.split(','):
+            for product_page_url in cfg['urls'].split(','):
                 new_entries.append(
                     process_product_pages(
                         product_page_url,
