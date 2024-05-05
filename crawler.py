@@ -59,7 +59,7 @@ def process_product_pages(
 
             # Get the suggested current stock amount
             suggested_stock_amount = driver.find_element(
-                By.CSS_SELECTOR, cfg['stock_amount_selector']
+                By.CSS_SELECTOR, cfg['stock_amounts_selector']
             ).get_attribute(cfg['stock_amount_attribute'])
 
             stock_amount = suggested_stock_amount
@@ -106,7 +106,7 @@ def process_product_pages(
                     .text
                 )
 
-                matched_stock_amount = re.search(r".*(\d+).*", error_message)
+                matched_stock_amount = re.search(r".+[\s+](-?\d+).*", error_message)
                 if matched_stock_amount:
                     stock_amount = str(int(matched_stock_amount.group(1)))
                     msg = "Confirmed"
