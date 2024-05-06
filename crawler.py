@@ -59,7 +59,7 @@ def process_product_pages(
 
             # Get the suggested current stock amount
             suggested_stock_amount = driver.find_element(
-                By.CSS_SELECTOR, cfg['stock_amounts_selector']
+                By.CSS_SELECTOR, cfg['stock_amount_selector']
             ).get_attribute(cfg['stock_amount_attribute'])
 
             stock_amount = suggested_stock_amount
