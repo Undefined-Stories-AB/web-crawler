@@ -79,3 +79,12 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+
+      - name: 🤖 Send to n8n Webhook
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://joaqim.app.n8n.cloud/webhook-test/6f044112-4473-4e9c-8cfe-b6441be6cd75'
+          method: 'POST'
+          file: ${{ github.workspace }}/stocks.json
+
+        
