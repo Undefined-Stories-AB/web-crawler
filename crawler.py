@@ -72,13 +72,13 @@ def process_product_pages(
                 By.CSS_SELECTOR,
                 cfg['product_brand_selector']).text.strip()
             product_price = driver.find_element(
-                By.CSS_SELECTOR,
+                By.XPATH,
                 cfg['product_price_selector']).get_attribute('content')
             product_price_currency = driver.find_element(
-                By.CSS_SELECTOR,
+                By.XPATH,
                 cfg['product_price_currency_selector']).get_attribute('content')
             product_availability = driver.find_element(
-                By.CSS_SELECTOR,
+                By.XPATH,
                 cfg['product_availability_selector']).get_attribute('content')
 
             stock_amount = suggested_stock_amount
