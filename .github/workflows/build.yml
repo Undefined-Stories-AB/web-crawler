@@ -10,6 +10,14 @@ env:
   INPUT_PURCHASE_AMOUNT_CSS_SELECTOR: ${{ secrets.INPUT_PURCHASE_AMOUNT_CSS_SELECTOR }}
   PURCHASE_SUBMIT_CSS_SELECTOR: ${{ secrets.PURCHASE_SUBMIT_CSS_SELECTOR }}
 
+  PRODUCT_NAME_CSS_SELECTOR: ${{ secrets.PRODUCT_NAME_CSS_SELECTOR }}
+  PRODUCT_BRAND_CSS_SELECTOR: ${{ secrets.PRODUCT_BRAND_CSS_SELECTOR }}
+  PRODUCT_PRICE_CSS_SELECTOR: ${{ secrets.PRODUCT_PRICE_CSS_SELECTOR }}
+  PRODUCT_PRICE_CURRENCY_CSS_SELECTOR: ${{ secrets.PRODUCT_PRICE_CURRENCY_CSS_SELECTOR }}
+  PRODUCT_AVAILABILITY_CSS_SELECTOR: ${{ secrets.PRODUCT_AVAILABILITY_CSS_SELECTOR }}
+
+  WEBHOOK_PRODUCTION_ENDPOINT: ${{ secrets.WEBHOOK_PRODUCTION_ENDPOINT }}
+
 on:
   push:
     branches:
@@ -40,51 +48,14 @@ jobs:
       - name: ✅ Validate stuff
         run: |
             [ -s "${{ github.workspace }}/stocks.json" ] && echo "🎉 Stocks JSON generated successfully!" || exit 1
-            [ -s "${{ github.workspace }}/stocks.rss" ]  && echo "🎉 Stocks JSON generated successfully!" || exit 1
         shell: bash
 
-      - name: 🚮 Delete older releases
-        uses: dev-drprasad/delete-older-releases@v0.2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          keep_latest: 3
-          delete_tags: true
-
-      - name: 🛠️ Generate stats
-        id: utils
-        run: |
-          # Date
-          echo "::set-output name=date::$(date -u "+%Y%m%d%H%M%S")"
-          # Number of datapoints
-          echo "::set-output name=stocks::$(jq length "${{ github.workspace }}/stocks.json")"
-        shell: bash
-
-      - name: 🛠️ Generate releases.json
-        run: |
-          # Number of datapoints
-          echo "{ \"datapoints\": ${{ steps.utils.outputs.stocks }} }" > "${{ github.workspace }}/releases.json" 
-        shell: bash
-
-      - name: 🚀 Upload new stocks feed
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: feeds
-          name: ${{ steps.utils.outputs.date }}
-          body: "Number of entries: ${{ steps.utils.outputs.stocks }}"
-          files: |
-            ${{ github.workspace }}/releases.json
-            ${{ github.workspace }}/stocks.json
-            ${{ github.workspace }}/stocks.rss
-          draft: false
-          prerelease: false
-          make_latest: true
 
       - name: 🤖 Send to n8n Webhook
         uses: fjogeleit/http-request-action@v1
         with:
-          url: 'https://joaqim.app.n8n.cloud/webhook-test/6f044112-4473-4e9c-8cfe-b6441be6cd75'
+          url: '${{ env.WEBHOOK_PRODUCTION_ENDPOINT }}'
           method: 'POST'
           file: ${{ github.workspace }}/stocks.json
 
-        
+

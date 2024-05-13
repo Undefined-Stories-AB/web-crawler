@@ -1,10 +1,8 @@
 import json
 import os
 import re
-import requests
 from datetime import datetime
 from dateutil import tz
-from feedgen.feed import FeedGenerator
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -24,7 +22,12 @@ cfg = {
     'stock_amount_selector': "SUGGESTED_STOCK_AMOUNT_CSS_SELECTOR",
     'stock_amount_attribute': "SUGGESTED_STOCK_AMOUNT_ATTRIBUTE_NAME",
     'purchase_amount_selector': "INPUT_PURCHASE_AMOUNT_CSS_SELECTOR",
-    'purchase_submit_selector': "PURCHASE_SUBMIT_CSS_SELECTOR"
+    'purchase_submit_selector': "PURCHASE_SUBMIT_CSS_SELECTOR",
+    'product_name_selector': "PRODUCT_NAME_CSS_SELECTOR",
+    'product_brand_selector': "PRODUCT_BRAND_CSS_SELECTOR",
+    'product_price_selector': "PRODUCT_PRICE_CSS_SELECTOR",
+    'product_price_currency_selector': "PRODUCT_PRICE_CURRENCY_CSS_SELECTOR",
+    'product_availability_selector': "PRODUCT_AVAILABILITY_CSS_SELECTOR",
 }
 
 # Retrieve and assign values from ENV variables to the configuration dictionary
@@ -43,7 +46,7 @@ def process_product_pages(
 
     # Find all product links on the page
     product_links = driver.find_elements(
-        By.CSS_SELECTOR, 
+        By.CSS_SELECTOR,
         cfg['product_link_selector']
     )
 
@@ -61,6 +64,22 @@ def process_product_pages(
             suggested_stock_amount = driver.find_element(
                 By.CSS_SELECTOR, cfg['stock_amount_selector']
             ).get_attribute(cfg['stock_amount_attribute'])
+
+            product_name = driver.find_element(
+                By.CSS_SELECTOR,
+                cfg['product_name_selector']).text.strip().split('\n').pop()
+            product_brand = driver.find_element(
+                By.CSS_SELECTOR,
+                cfg['product_brand_selector']).text.strip()
+            product_price = driver.find_element(
+                By.CSS_SELECTOR,
+                cfg['product_price_selector']).get_attribute('content')
+            product_price_currency = driver.find_element(
+                By.CSS_SELECTOR,
+                cfg['product_price_currency_selector']).get_attribute('content')
+            product_availability = driver.find_element(
+                By.CSS_SELECTOR,
+                cfg['product_availability_selector']).get_attribute('content')
 
             stock_amount = suggested_stock_amount
             msg = ""
@@ -84,7 +103,7 @@ def process_product_pages(
                 submit_button = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
                         (
-                            By.CSS_SELECTOR, 
+                            By.CSS_SELECTOR,
                             cfg['purchase_submit_selector']
                         )
                     )
@@ -97,27 +116,35 @@ def process_product_pages(
                 error_message = (
                     WebDriverWait(driver, 10)
                     .until(EC.presence_of_element_located(
-                            (
-                                By.CLASS_NAME,
-                                "Error"
-                            )
+                        (
+                            By.CLASS_NAME,
+                            "Error"
                         )
+                    )
                     )
                     .text
                 )
 
-                matched_stock_amount = re.search(r".+[\s+](-?\d+).*", error_message)
+                matched_stock_amount = re.search(
+                    r".+[\s+](-?\d+).*", error_message)
                 if matched_stock_amount:
                     stock_amount = str(int(matched_stock_amount.group(1)))
                     msg = "Confirmed"
             except TimeoutException:
-                msg = f"Unconfirmed. Assumed stock amount is: {suggested_stock_amount}"
+                msg = f"Unconfirmed. Assumed stock amount is: {
+                    suggested_stock_amount}"
 
-            product = str(product_url.split("/")[-1])
+            slug = str(product_url.split("/")[-1])
 
             entry = {
-                # "url": str(product_url),
-                "product": product,
+                "url": str(product_url),
+                "date": datetime.now(tz.gettz('Europe/Stockholm')).isoformat(),
+                "slug": slug,
+                "name": product_name,
+                "brand": product_brand,
+                "price": product_price,
+                "currency": product_price_currency,
+                "availability": product_availability,
                 "stock_amount": stock_amount,
                 "suggested_stock_amount": suggested_stock_amount,
                 "msg": msg,
@@ -136,57 +163,25 @@ if __name__ == "__main__":
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # Run in headless mode
 
-    FEED_URL = "https://github.com/Undefined-Stories-AB/web-crawler/releases/download/feeds/stocks"
-
     # Launch the browser
+
     chrome_driver = webdriver.Chrome(options=chrome_options)
-
     try:
-        with requests.get(FEED_URL + ".json") as feed:
-            existing_entries = feed.json()
-            new_entries = []
-            for product_page_url in cfg['urls'].split(','):
-                new_entries.append(
-                    process_product_pages(
-                        product_page_url,
-                        chrome_driver
-                    )
+        new_entries = []
+        for product_page_url in cfg['urls'].split(','):
+
+            new_entries.append(
+                process_product_pages(
+                    product_page_url,
+                    chrome_driver
                 )
+            )
 
-            # Flatten the list of lists into a single list of dicts
-            new_entries = [
-                item for sublist in new_entries for item in sublist
-            ] + existing_entries
+        with open("stocks.json", "w", encoding="utf-8") as fp:
+            fp.write(json.dumps(
+                new_entries
+            ))
 
-            with open("stocks.json", "w", encoding="utf-8") as fp:
-                fp.write(json.dumps(existing_entries + new_entries))
-
-            # RSS feed configuration
-            feed = FeedGenerator()
-            feed.title("Stocks RSS Feed")
-            feed.link(href=(FEED_URL + ".rss"))
-            feed.subtitle("Simple RSS feed")
-
-            # Adding new entries from data
-            for entry in new_entries:
-                item = feed.add_entry()
-                item.title(entry["product"])
-                item.link(href=entry["product"])
-                item.description(entry["stock_amount"])
-                item.published(datetime.now(tz.gettz('Europe/Stockholm')))
-                item.updated(datetime.now(tz.gettz('Europe/Stockholm')))
-            
-            for entry in existing_entries:
-                item = feed.add_entry()
-                item.title(entry["product"])
-                item.link(href=entry["product"])
-                item.description(entry["stock_amount"])
-                item.updated(datetime.now(tz.gettz('Europe/Stockholm')))
-                if 'published' in entry:
-                    item.published(entry['published'])
-
-            # Save the RSS feed to a file
-            feed.rss_file("stocks.rss")
     finally:
         # Quit the WebDriver
         chrome_driver.quit()
