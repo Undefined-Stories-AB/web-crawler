@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "stocks": {
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+              "required": [
+                "url",
+                "slug",
+                "name",
+                "brand",
+                "price",
+                "currency",
+                "availability",
+                "stock_amount",
+                "suggested_stock_amount",
+                "msg"
+              ],
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "minLength": 1
+                },
+		"slug": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "brand": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "price": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "currency": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "availability": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "stock_amount": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "suggested_stock_amount": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "msg": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "date",
+    "entries"
+  ]
+}
