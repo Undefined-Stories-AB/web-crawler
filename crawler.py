@@ -136,10 +136,11 @@ def process_product_pages(
 
             slug = str(product_url.split("/")[-1])
 
+            date = datetime.now(tz.gettz('Europe/Stockholm'))
             entry = {
                 "url": str(product_url),
-                "date": datetime.now(tz.gettz('Europe/Stockholm')).isoformat(),
                 "slug": slug,
+                "date": date.isoformat().split('T')[0],
                 "name": product_name,
                 "brand": product_brand,
                 "price": product_price,
@@ -148,6 +149,7 @@ def process_product_pages(
                 "stock_amount": stock_amount,
                 "suggested_stock_amount": suggested_stock_amount,
                 "msg": msg,
+                "datetime": date
             }
             entries.append(entry)
 
