@@ -180,9 +180,12 @@ if __name__ == "__main__":
             )
 
         with open("stocks.json", "w", encoding="utf-8") as fp:
-            fp.write(json.dumps(
-                new_entries
-            ))
+            fp.write(
+                json.dumps(
+                    new_entries,
+                    default=str
+                )
+            )
 
     finally:
         # Quit the WebDriver
