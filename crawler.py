@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -130,7 +130,7 @@ def process_product_pages(
                 if matched_stock_amount:
                     stock_amount = str(int(matched_stock_amount.group(1)))
                     msg = "Confirmed"
-            except TimeoutException:
+            except (NoSuchElementException, TimeoutException):
                 msg = f"Unconfirmed. Assumed stock amount is: {
                     suggested_stock_amount}"
 
